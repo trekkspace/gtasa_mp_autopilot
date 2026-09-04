@@ -42,6 +42,7 @@ export const CONFIG = {
   // ALT+G engages / disengages. No destination - the car just drives.
   autoEnabled: true,
   autoKey: 0x47,            // G
+  markKey: 0x42,            // B - marks your position for "Marked point" mode
 
   // Driving style handed to the AI. San Andreas' values are:
   //   0  stop for cars            - obeys traffic lights
@@ -101,22 +102,18 @@ export const CONFIG = {
   startVisible: false,
   windowTitle: "Player Info",
 
-  // Place the imgui window at x/y on first show. Purely a convenience - the
-  // window is draggable either way. Set false to silence the
-  // IMGUI_SET_NEXT_WINDOW_POS warning if the argument count is still wrong.
+  // Opening position and size of the imgui window. Both are applied with
+  // ImGuiCond_Once, so dragging and resizing with the mouse sticks.
   positionWindow: true,
+  windowW: 360.0,
+  windowH: 420.0,
 
-  // The five booleans passed to ImGui.Begin after the title. Their meaning in
-  // this build is unknown - I assumed
-  //   [noTitleBar, noResize, noMove, noScrollbar, noCollapse]
-  // but all-false leaves the window unmovable, so at least one is inverted.
-  // Flip them ONE AT A TIME and see which restores dragging.
-  beginFlags: [false, false, false, false, false],
+  // Releases the mouse cursor to ImGui while the panel is open, so the window
+  // can be dragged and the buttons clicked. Hiding the panel (ALT+X) gives the
+  // mouse back to the game, so close it before you drive.
+  showCursor: true,
 
-  // ALT + arrow keys nudge the window while it's open. This goes through
-  // SetNextWindowPos and works regardless of what the flags above do.
-  nudgeWithArrows: true,
-  moveStep: 4.0,
+
 
 
   maxLines: 16,
@@ -125,6 +122,9 @@ export const CONFIG = {
   // script loop has stalled; if it climbs but values don't change, the
   // readings are the problem. Handy while debugging, turn off after.
   showTicker: true,
+
+  // How many recent log lines the Log tab keeps.
+  logKeep: 14,
 
   // Logs any frame slower than slowFrameMs, split into collect vs render,
   // at most once a second. Turn off once the stalling is sorted.
