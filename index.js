@@ -8,11 +8,10 @@
 // Keys (all ALT-modified so SA-MP chat can't trigger them):
 //   ALT+X       show / hide the panel
 //   ALT+G       autopilot start / stop
-//   ALT+B       mark current position (for "Marked point" mode)
 //   Drag / resize the window with the mouse; its X button hides it too.
 //
-// The panel has buttons for start/stop, mode selection and marking, plus a
-// Log section mirroring cleo_redux.log. Move and resize it with the mouse.
+// The panel has Info / Autopilot / Log tabs. The autopilot free roams, with
+// traffic-light, traffic-avoidance and speed settings adjustable live.
 //
 // ---------------------------------------------------------------------------
 
@@ -22,6 +21,7 @@ import { logLine } from "./lib/logbuf.js";
 import { collectLines } from "./lib/info.js";
 import { render, clearText, initTextMode, resolveMode, HAS_IMGUI } from "./lib/render.js";
 import * as auto from "./lib/autopilot.js";
+import * as trip from "./lib/trip.js";
 
 const mode = resolveMode();
 if (mode === "text") initTextMode();
@@ -43,7 +43,6 @@ let autoState = null;
 
 const toggleFired = makeKeyLatch(CONFIG.toggleKey);
 const autoFired = makeKeyLatch(CONFIG.autoKey);
-const markFired = makeKeyLatch(CONFIG.markKey);
 
 logLine("[hud] loaded, mode=" + mode + ", imgui=" + HAS_IMGUI);
 
@@ -71,10 +70,7 @@ while (true) {
       if (auto.isEngaged()) auto.disengage(player, "toggled off");
       else auto.engage(player, player.getChar());
     }
-    if (altDown && markFired()) {
-      auto.markPoint(safe(() => player.getChar().getCoordinates(), null));
-    }
-    autoState = auto.isEngaged() ? auto.update(player, player.getChar(), now) : null;
+    autoState = auto.update(player, player.getChar(), now);
   }
 
   if (!visible) continue;
@@ -95,8 +91,22 @@ while (true) {
   // --- draw, and act on any button the user clicked ---
   const ui = {
     engaged: auto.isEngaged(),
-    autoMode: auto.getMode(),
     status: auto.getStatus(),
+    stopReason: auto.getStopReason(),
+    obeyLights: CONFIG.obeyTrafficLights,
+    avoidTraffic: CONFIG.avoidTraffic,
+    speedPercent: CONFIG.speedPercent,
+    varySpeed: CONFIG.varySpeed,
+    style: auto.styleFromOptions(),
+    speedKmh: CONFIG.autoTopSpeed * (CONFIG.speedPercent / 100) * 3.6,
+    explore: CONFIG.exploreNewAreas,
+    headlights: CONFIG.autoHeadlights,
+    autoFlip: CONFIG.autoFlip,
+    disengageOnInput: CONFIG.disengageOnInput,
+    stopAfterMinutes: CONFIG.stopAfterMinutes,
+    stopAfterKm: CONFIG.stopAfterKm,
+    stopBelowHealth: CONFIG.stopBelowVehicleHealth,
+    trip: trip.stats(now),
   };
 
   let actions = {};
@@ -110,14 +120,22 @@ while (true) {
   const tEnd = safe(() => Clock.GetGameTimer(), 0);
   reposition = false;
 
+  if (actions.setLights !== undefined) CONFIG.obeyTrafficLights = actions.setLights;
+  if (actions.setTraffic !== undefined) CONFIG.avoidTraffic = actions.setTraffic;
+  if (actions.setSpeed !== undefined) CONFIG.speedPercent = actions.setSpeed;
+  if (actions.setVary !== undefined) CONFIG.varySpeed = actions.setVary;
+  if (actions.setExplore !== undefined) CONFIG.exploreNewAreas = actions.setExplore;
+  if (actions.setHeadlights !== undefined) CONFIG.autoHeadlights = actions.setHeadlights;
+  if (actions.setFlip !== undefined) CONFIG.autoFlip = actions.setFlip;
+  if (actions.setHandback !== undefined) CONFIG.disengageOnInput = actions.setHandback;
+  if (actions.setStopMinutes !== undefined) CONFIG.stopAfterMinutes = actions.setStopMinutes;
+  if (actions.setStopKm !== undefined) CONFIG.stopAfterKm = actions.setStopKm;
+  if (actions.setStopHealth !== undefined) CONFIG.stopBelowVehicleHealth = actions.setStopHealth;
+  if (actions.resetTrip) trip.reset();
   if (actions.toggleAuto) {
     if (auto.isEngaged()) auto.disengage(player, "button");
     else auto.engage(player, player.getChar());
   }
-  if (actions.markPoint) {
-    auto.markPoint(safe(() => player.getChar().getCoordinates(), null));
-  }
-  if (actions.setMode) auto.setMode(actions.setMode);
 
   // The window's own close button hides the panel and returns the mouse.
   if (actions.closed) {
